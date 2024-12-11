@@ -2,6 +2,7 @@ from typing import Callable, TypeVar
 
 Word = str
 Label = str
+STOP_KEYWORD = 'STOP'
 
 def viterbi_algorithm_trigram(sentence: list[Word], labels: list[Label],
                       q: Callable[[Label, Label, Label], float],
@@ -28,15 +29,27 @@ def viterbi_algorithm_trigram(sentence: list[Word], labels: list[Label],
     criterion = lambda k, u, v, w: pi_of(k, u, v) * q(v, w, u) * e(x[k], v)
 
     for k in range(1, n+1):
-        __fill_one_k(labels, pi, bp, criterion, k)
+        __fill_pi_one_index(labels, pi, bp, criterion, k)
     
     # Extract solution:
-    pass
+    best_pair = ()
+    best_pair_value = 0
+    for v in labels:
+        for u in labels:
+            if best_pair_value < pi[(n, u, v)]:
+                best_pair = (v, u)
+                best_pair_value = pi[(n, u, v)]
+
+    result = [*best_pair] # We insert elements in reverse
+    for k in range(n-2, 0, -1):
+        result.append(bp[(k+2, result[-1], result[-2])])
+    
+    return list(reversed(result))
 
 
 
 
-def __fill_one_k(labels, pi, bp, criterion, k):
+def __fill_pi_one_index(labels, pi, bp, criterion, k):
     for v in labels:
         for u in labels:
             bp[(k, u, v)] = max(labels, key=lambda w: criterion(k, u, v, w))
