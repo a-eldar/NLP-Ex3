@@ -73,7 +73,7 @@ def viterbi_algorithm_bigram(sentence: list[Word], labels: list[Label],
     criterion = lambda k, v, u: pi_of(k-1, v) * q(v, u) * e(x[k-1], v)
 
     for k in range(1, n+1):
-        __fill_pi_one_index(labels, pi, bp, criterion, k, BIGRAM)
+        __fill_pi_one_index(labels, pi, bp, criterion, k, BIGRAM, 'H')
     
     # Extract solution:
     best_label = None
