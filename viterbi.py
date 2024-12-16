@@ -93,10 +93,15 @@ def viterbi_algorithm_bigram(sentence: list[Word], labels: list[Label],
     return list(reversed(result))
 
 
-def __fill_pi_one_index(labels, pi, bp, criterion, k, gram=3):
-    for comb in product(labels, repeat=gram-1):
-        bp[(k, *comb)] = max(labels, key=lambda w: criterion(k, *comb, w))
-        pi[(k, *comb)] = criterion(k, *comb, bp[(k, *comb)])
+def __fill_pi_one_index(labels, pi, bp, criterion, k, gram=3, initial_label=None):
+    if k == 1 and initial_label:
+        for comb in product(labels, repeat=gram-1):
+            bp[(k, *comb)] = initial_label
+            pi[(k, *comb)] = criterion(k, *comb, initial_label)
+    else:    
+        for comb in product(labels, repeat=gram-1):
+            bp[(k, *comb)] = max(labels, key=lambda w: criterion(k, *comb, w))
+            pi[(k, *comb)] = criterion(k, *comb, bp[(k, *comb)])
 
 
 
