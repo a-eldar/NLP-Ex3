@@ -64,6 +64,7 @@ def compute_hmm_bigram(sentences: list[list[str]]) -> dict[tuple[str, str], str]
             word_tag_counts[tag][word.lower()] += 1
             prev_tag = tag
 
+    #ADD ONE. split to 3 func    
     # Normalize the dictionaries to achieve distribution
     for prev_tag in tag_counts:
         norm = sum(tag_counts[prev_tag].values())

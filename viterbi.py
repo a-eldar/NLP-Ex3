@@ -103,12 +103,86 @@ def __fill_pi_one_index(labels, pi, bp, criterion, k, gram=3, initial_label=None
             bp[(k, *comb)] = max(labels, key=lambda w: criterion(k, *comb, w))
             pi[(k, *comb)] = criterion(k, *comb, bp[(k, *comb)])
 
+def viterbi_bigram(observations, states, start_prob, transition_prob, emission_prob):
+    """
+    Perform the Viterbi algorithm for a bigram HMM.
+
+    Parameters:
+        observations (list): The sequence of observed words.
+        states (list): The set of possible tags.
+        start_prob (dict): Start probabilities, P(t0).
+                           Example: {'NOUN': 0.5, 'VERB': 0.5}
+        transition_prob (dict): Transition probabilities, P(t|u).
+                                Example: {('NOUN', 'VERB'): 0.1, ('VERB', 'NOUN'): 0.2}
+        emission_prob (dict): Emission probabilities, P(x|t).
+                              Example: {('NOUN', 'dog'): 0.5, ('VERB', 'runs'): 0.3}
+
+    Returns:
+        tuple: The most probable sequence of states (tags) and its probability.
+    """
+    n = len(observations)
+    viterbi = [{} for _ in range(n)]  # DP table for probabilities
+    backpointer = [{} for _ in range(n)]  # DP table for backpointers
+
+    # Initialization step
+    for state in states:
+        viterbi[0][state] = start_prob.get(state) * emission_prob(state, observations[0])
+        backpointer[0][state] = None
+
+    # Recursion step
+    for t in range(1, n):
+        for state in states:
+            max_prob, best_prev_state = max(
+                (
+                    viterbi[t - 1][prev_state] * transition_prob.get((prev_state, state), 0)
+                    * emission_prob(state, observations[t]),
+                    prev_state,
+                )
+                for prev_state in states
+            )
+            viterbi[t][state] = max_prob
+            backpointer[t][state] = best_prev_state
+
+    # Termination step
+    max_prob, best_last_state = max((viterbi[n - 1][state], state) for state in states)
+
+    # Backtracking
+    best_path = [best_last_state]
+    for t in range(n - 1, 0, -1):
+        best_path.insert(0, backpointer[t][best_path[0]])
+
+    return best_path, max_prob
 
 
+def viterbi(obs, states, start_p, trans_p, emit_p):
+    V = [{}]
+    path = {}
+
+    for y in states:
+        V[0][y] = start_p[y] * emit_p[y][obs[0]]
+        path[y] = [y]
+
+    for t in range(1, len(obs)):
+        V.append({})
+        newpath = {}
+
+        for y in states:
+            (prob, state) = max(
+                [(V[t-1][y0] * trans_p[y0][y] * emit_p[y][obs[t]], y0) for y0 in states]
+            )
+            V[t][y] = prob
+            newpath[y] = path[state] + [y]
+
+        path = newpath
+
+    (prob, state) = max([(V[-1][y], y) for y in states])
+    return (prob, path[state])
 
 if __name__ == "__main__":
-    q = lambda v, u: 0.5 if u == 'H' else 0.4 + 0.2 * int(v == 'L')
-    def e(x, v):
+    #q = lambda v, u: 0.5 if u == 'H' else 0.4 + 0.2 * int(v == 'L')
+    q = {'H':{'H':0.5, 'L':0.5},'L':{'H':0.4, 'L':0.6}}
+    #{('H','H'): 0.5, ('H','L'): 0.4, ('L','H'): 0.5, ('L','L'): 0.6}
+    def e(v,x):
         h_prob = {
             'A': 0.2, 'C': 0.3, 'G': 0.3, 'T': 0.2
         }
@@ -118,4 +192,7 @@ if __name__ == "__main__":
         if v == 'H':
             return h_prob[x]
         return l_prob[x]
-    print(viterbi_algorithm_bigram("ACCGTGCA", ['H', 'L'], q, e))
+    emit = {'H':{'A': 0.2, 'C': 0.3, 'G': 0.3, 'T': 0.2},
+            'L':{'A': 0.3, 'C': 0.2, 'G': 0.2, 'T': 0.3}}
+    start = {'H': 1, 'L':0}
+    print(viterbi("ACCGTGCA", ['H', 'L'], start, q, emit))
