@@ -43,7 +43,37 @@ def compute_probabilities(sentences: list[list[str]]):
     return most_likely_tags
 
 
-def compute_hmm_bigram(sentences: list[list[str]]) -> dict[tuple[str, str], str]:
+
+def __count_bigram_distributions(sentences, tag_counts, word_tag_counts):
+    for sentence in sentences:
+        prev_tag = START
+        for word, tag in sentence:
+            tag_counts[prev_tag][tag] += 1
+            word_tag_counts[tag][word.lower()] += 1
+            prev_tag = tag
+
+def __add_one_bigram(tag_counts: defaultdict[Counter], word_tag_counts: defaultdict[Counter]):
+    for prev_tag in tag_counts:
+        for tag in tag_counts[prev_tag]:
+            tag_counts[prev_tag][tag] += 1
+    
+    for tag in word_tag_counts:
+        for word in word_tag_counts[tag]:
+            word_tag_counts[tag][word] += 1
+
+def __normalize_distributions(tag_counts, word_tag_counts):
+    for prev_tag in tag_counts:
+        norm = sum(tag_counts[prev_tag].values())
+        prev_tag_counts = tag_counts[prev_tag]
+        tag_counts[prev_tag] = {tag: prev_tag_counts[tag] / norm
+                                for tag in prev_tag_counts}
+    
+    for tag in word_tag_counts:
+        norm = sum(word_tag_counts[tag].values())
+        word_tag_counts[tag] = {word: word_tag_counts[tag][word] / norm
+                                for word in word_tag_counts[tag]}
+
+def compute_hmm_bigram(sentences: list[list[str]]) -> tuple[defaultdict[Counter], defaultdict[Counter]]:
     """Bigram distribution, returns q, e where
     q(y|y_prev), e(x|y)
 
@@ -56,29 +86,29 @@ def compute_hmm_bigram(sentences: list[list[str]]) -> dict[tuple[str, str], str]
     """
     tag_counts = defaultdict(Counter) # q distribution function
     word_tag_counts = defaultdict(Counter) # e distribution function
-
-    for sentence in sentences:
-        prev_tag = START
-        for word, tag in sentence:
-            tag_counts[prev_tag][tag] += 1
-            word_tag_counts[tag][word.lower()] += 1
-            prev_tag = tag
-
-    #ADD ONE. split to 3 func    
-    # Normalize the dictionaries to achieve distribution
-    for prev_tag in tag_counts:
-        norm = sum(tag_counts[prev_tag].values())
-        prev_tag_counts = tag_counts[prev_tag]
-        tag_counts[prev_tag] = {tag: prev_tag_counts[tag] / norm
-                                for tag in prev_tag_counts}
-    
-    for tag in word_tag_counts:
-        norm = sum(word_tag_counts[tag].values())
-        word_tag_counts[tag] = {word: word_tag_counts[tag][word] / norm
-                                for word in word_tag_counts[tag]}
-    
+    __count_bigram_distributions(sentences, tag_counts, word_tag_counts)
+    __normalize_distributions(tag_counts, word_tag_counts)
     return tag_counts, word_tag_counts
 
+
+
+def compute_hmm_bigram_with_add_one_smoothing(sentences: list[list[str]]):
+    """Bigram distribution with add-1 (Laplace) smoothing.
+    returns q, e where q(y|y_prev), e(x|y)
+
+    Args:
+        sentences (list[list[str]]):
+
+    Returns:
+        dict[str, dict[str, float]]: the distribution q
+        dict[str, dict[str, float]]: the distribution e
+    """
+    tag_counts = defaultdict(Counter) # q distribution function
+    word_tag_counts = defaultdict(Counter) # e distribution function
+    __count_bigram_distributions(sentences, tag_counts, word_tag_counts)
+    __add_one_bigram(tag_counts, word_tag_counts)   
+    __normalize_distributions(tag_counts, word_tag_counts)
+    return tag_counts, word_tag_counts
 
 
 def compute_model_error_rates(model: Callable[[str], tuple[str, bool]], test_sentences: list[list[str]]):
