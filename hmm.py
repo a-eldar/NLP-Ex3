@@ -18,7 +18,7 @@ train_sentences = news_sentences[:split_index]
 test_sentences = news_sentences[split_index:]
 
 def compute_probabilities(sentences: list[list[str]]):
-    """Compute for each word the tag that yeilds max P(tag|word)
+    """Compute for each word the tag that yields max P(tag|word)
     This is for Q3b.i
 
     Args
@@ -111,13 +111,14 @@ def compute_hmm_bigram_with_add_one_smoothing(sentences: list[list[str]]):
     return tag_counts, word_tag_counts
 
 
-def compute_model_error_rates(model: Callable[[str], tuple[str, bool]], test_sentences: list[list[str]]):
-    """Given tagging model,
+def compute_model_error_rates(model: Callable[[list[tuple[str, str]], str], tuple[str, bool]], test_sentences: list[list[str]]):
+    """Given tagging Model (unigram),
     compute error for known words, unknown words, and in total.
 
     Args:
-        model (Callable[[str], tuple[str, bool]]): Given word,\
-              returns tag and whether it is a known word
+        model (Callable[[list[tuple[str, str]], str], tuple[str, bool]]):\
+            Given previous words and their tags, and a word,\
+            returns tag and whether it is a known word
         test_sentences (list[list[str]])
     
     Return:
@@ -129,8 +130,9 @@ def compute_model_error_rates(model: Callable[[str], tuple[str, bool]], test_sen
     total_unknown_words = 0
 
     for sentence in test_sentences:
+        previous_words = []
         for word, tag in sentence:
-            guess, is_known = model(word)
+            guess, is_known = model(previous_words, word)
             if is_known:
                 total_known_words += 1
             else:
@@ -143,22 +145,28 @@ def compute_model_error_rates(model: Callable[[str], tuple[str, bool]], test_sen
                 known_words_error += 1
             else:
                 unknown_words_error += 1
+            previous_words.append((word, tag))
     
     total_error = known_words_error + unknown_words_error
     known_words_error /= total_known_words
     unknown_words_error /= total_unknown_words
     total_error /= total_known_words + total_unknown_words
     return known_words_error, unknown_words_error, total_error
+
             
 
 
 
 if __name__ == "__main__":
     MOST_COMMON_TAG = 'NN'
-    model_dict = compute_probabilities(train_sentences)
-    def model(word: str) -> tuple[str, bool]:
-        if word in model_dict:
-            return model_dict[word], True
-        return MOST_COMMON_TAG, False
+    ### a)
+    # model_dict = compute_probabilities(train_sentences)
+    # def model(previous_words, word: str) -> tuple[str, bool]:
+    #     if word in model_dict:
+    #         return model_dict[word], True
+    #     return MOST_COMMON_TAG, False
 
-    print(compute_model_error_rates(model, test_sentences))
+    # print(compute_model_error_rates(model, test_sentences))
+
+    ### d)
+    
