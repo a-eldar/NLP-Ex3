@@ -7,6 +7,8 @@ from typing import Callable
 import nltk
 nltk.download('brown')
 
+START = "START"
+
 # Extract words from the "news" category
 news_sentences = brown.tagged_sents(categories='news')
 
@@ -36,8 +38,47 @@ def compute_probabilities(sentences: list[list[str]]):
             word_tag_counts[word.lower()][tag] += 1  # Use lowercase to avoid case sensitivity
 
     # Step 2: Find the tag that maximizes P(tag|word) for each word
-    most_likely_tags = {word: tag_counts.most_common(1)[0][0] for word, tag_counts in word_tag_counts.items()}
+    most_likely_tags = {word: tag_counts.most_common(1)[0][0]
+                        for word, tag_counts in word_tag_counts.items()}
     return most_likely_tags
+
+
+def compute_hmm_bigram(sentences: list[list[str]]) -> dict[tuple[str, str], str]:
+    """Bigram distribution, returns q, e where
+    q(y|y_prev), e(x|y)
+
+    Args:
+        sentences (list[list[str]]):
+
+    Returns:
+        dict[str, dict[str, float]]: the distribution q
+        dict[str, dict[str, float]]: the distribution e
+    """
+    tag_counts = defaultdict(Counter) # q distribution function
+    word_tag_counts = defaultdict(Counter) # e distribution function
+
+    for sentence in sentences:
+        prev_tag = START
+        for word, tag in sentence:
+            tag_counts[prev_tag][tag] += 1
+            word_tag_counts[tag][word.lower()] += 1
+            prev_tag = tag
+
+    # Normalize the dictionaries to achieve distribution
+    for prev_tag in tag_counts:
+        norm = sum(tag_counts[prev_tag].values())
+        prev_tag_counts = tag_counts[prev_tag]
+        tag_counts[prev_tag] = {tag: prev_tag_counts[tag] / norm
+                                for tag in prev_tag_counts}
+    
+    for tag in word_tag_counts:
+        norm = sum(word_tag_counts[tag].values())
+        word_tag_counts[tag] = {word: word_tag_counts[tag][word] / norm
+                                for word in word_tag_counts[tag]}
+    
+    return tag_counts, word_tag_counts
+
+
 
 def compute_model_error_rates(model: Callable[[str], tuple[str, bool]], test_sentences: list[list[str]]):
     """Given tagging model,
