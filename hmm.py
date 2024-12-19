@@ -2,6 +2,7 @@ from nltk.corpus import brown
 from nltk.lm import MLE
 from collections import defaultdict, Counter
 from typing import Callable
+from viterbi import viterbi
 
 # Ensure you have downloaded the Brown corpus
 import nltk
@@ -110,8 +111,9 @@ def compute_hmm_bigram_with_add_one_smoothing(sentences: list[list[str]]):
     __normalize_distributions(tag_counts, word_tag_counts)
     return tag_counts, word_tag_counts
 
+###################################################
 
-def compute_model_error_rates(model: Callable[[list[tuple[str, str]], str], tuple[str, bool]], test_sentences: list[list[str]]):
+def compute_model_error_rates(model: Callable[[list[tuple[str, str]], str], tuple[str, bool]], test_sentences: list[list[tuple[str, str]]]):
     """Given tagging Model (unigram),
     compute error for known words, unknown words, and in total.
 
@@ -119,7 +121,7 @@ def compute_model_error_rates(model: Callable[[list[tuple[str, str]], str], tupl
         model (Callable[[list[tuple[str, str]], str], tuple[str, bool]]):\
             Given previous words and their tags, and a word,\
             returns tag and whether it is a known word
-        test_sentences (list[list[str]])
+        test_sentences (list[list[tuple[str, str]]])
     
     Return:
         tuple[float, float, float]: known words error, unknown words error, total error
@@ -153,20 +155,53 @@ def compute_model_error_rates(model: Callable[[list[tuple[str, str]], str], tupl
     total_error /= total_known_words + total_unknown_words
     return known_words_error, unknown_words_error, total_error
 
-            
+def compute_viterbi_error_rates(q, e, test_sentences: list[list[tuple[str, str]]]):
+    known_words_error = 0
+    total_known_words = 0
+    unknown_words_error = 0
+    total_unknown_words = 0
 
+    known_words = set()
+    known_tags = set()
+    for tag in e:
+        known_tags.add(tag)
+        for word in e[tag]:
+            known_words.add(word)
+
+    for sentence in test_sentences:
+        words = [word for word, tag in sentence]
+        prob, path = viterbi(words, known_tags, q[START], q, e)
+        for i, (word, tag) in enumerate(sentence): # == len(path)
+            if word in known_words:
+                total_known_words += 1
+                known_words_error += int(tag != path[i])
+            else:
+                total_unknown_words += 1
+                unknown_words_error += int(tag != path[i])
+    
+    total_error = known_words_error + unknown_words_error
+    known_words_error /= total_known_words
+    unknown_words_error /= total_unknown_words
+    total_error /= total_known_words + total_unknown_words
+    return known_words_error, unknown_words_error, total_error
 
 
 if __name__ == "__main__":
     MOST_COMMON_TAG = 'NN'
     ### a)
-    # model_dict = compute_probabilities(train_sentences)
-    # def model(previous_words, word: str) -> tuple[str, bool]:
-    #     if word in model_dict:
-    #         return model_dict[word], True
-    #     return MOST_COMMON_TAG, False
+    print("basic model rates:")
+    model_dict = compute_probabilities(train_sentences)
+    def model(previous_words, word: str) -> tuple[str, bool]:
+        if word in model_dict:
+            return model_dict[word], True
+        return MOST_COMMON_TAG, False
 
-    # print(compute_model_error_rates(model, test_sentences))
+    print(compute_model_error_rates(model, test_sentences))
 
     ### d)
+    # print(train_sentences[0])
+    # print(compute_hmm_bigram_with_add_one_smoothing(train_sentences[:1]))
+    print("\nviterbi algorithm rates:")
+    q, e = compute_hmm_bigram_with_add_one_smoothing(train_sentences)
+    print(compute_viterbi_error_rates(q, e, test_sentences))
     

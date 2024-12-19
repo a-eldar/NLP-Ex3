@@ -158,8 +158,13 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     V = [{}]
     path = {}
 
+    default_emit = lambda y, x: 1 if y == 'NN' else 0
+    emit_f = lambda y, x: emit_p[y][x] if x in emit_p[y] else default_emit(y, x)
+    start_f = lambda y: start_p[y] if y in start_p else 0
+    trans_f = lambda y0, y: trans_p[y0][y] if y in trans_p[y0] else 0
+
     for y in states:
-        V[0][y] = start_p[y] * emit_p[y][obs[0]]
+        V[0][y] = start_f(y) * emit_f(y, obs[0])
         path[y] = [y]
 
     for t in range(1, len(obs)):
@@ -168,7 +173,7 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
 
         for y in states:
             (prob, state) = max(
-                [(V[t-1][y0] * trans_p[y0][y] * emit_p[y][obs[t]], y0) for y0 in states]
+                [(V[t-1][y0] * trans_f(y0, y) * emit_f(y, obs[t]), y0) for y0 in states]
             )
             V[t][y] = prob
             newpath[y] = path[state] + [y]
