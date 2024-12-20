@@ -166,9 +166,9 @@ def compute_viterbi_error_rates(q, e, test_sentences: list[list[tuple[str, str]]
 
     for sentence in test_sentences:
         words = [word for word, tag in sentence]
-        prob, path = viterbi(words, known_tags, q[START], q, e)
+        prob, path = viterbi(words, known_tags, q[START], q, e, known_words)
         for i, (word, tag) in enumerate(sentence): # == len(path)
-            if word in known_words:
+            if word.lower() in known_words:
                 total_known_words += 1
                 known_words_error += int(tag != path[i])
             else:

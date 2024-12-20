@@ -154,12 +154,12 @@ def viterbi_bigram(observations, states, start_prob, transition_prob, emission_p
     return best_path, max_prob
 
 
-def viterbi(obs, states, start_p, trans_p, emit_p):
+def viterbi(obs, states, start_p, trans_p, emit_p, known_words):
     V = [{}]
     path = {}
 
-    default_emit = lambda y, x: 1 if y == 'NN' else 0
-    emit_f = lambda y, x: emit_p[y][x] if x in emit_p[y] else default_emit(y, x)
+    default_emit = lambda y, x: 1 if x.lower() not in known_words else 0
+    emit_f = lambda y, x: emit_p[y][x.lower()] if x.lower() in emit_p[y] else default_emit(y, x)
     start_f = lambda y: start_p[y] if y in start_p else 0
     trans_f = lambda y0, y: trans_p[y0][y] if y in trans_p[y0] else 0
 
