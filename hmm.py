@@ -43,8 +43,6 @@ def compute_probabilities(sentences: list[list[str]]):
                         for word, tag_counts in word_tag_counts.items()}
     return most_likely_tags
 
-
-
 def __count_bigram_distributions(sentences, tag_counts, word_tag_counts):
     for sentence in sentences:
         prev_tag = START
@@ -90,8 +88,6 @@ def compute_hmm_bigram(sentences: list[list[str]]) -> tuple[defaultdict[Counter]
     __count_bigram_distributions(sentences, tag_counts, word_tag_counts)
     __normalize_distributions(tag_counts, word_tag_counts)
     return tag_counts, word_tag_counts
-
-
 
 def compute_hmm_bigram_with_add_one_smoothing(sentences: list[list[str]]):
     """Bigram distribution with add-1 (Laplace) smoothing.
@@ -180,11 +176,75 @@ def compute_viterbi_error_rates(q, e, test_sentences: list[list[tuple[str, str]]
                 unknown_words_error += int(tag != path[i])
     
     total_error = known_words_error + unknown_words_error
-    known_words_error /= total_known_words
-    unknown_words_error /= total_unknown_words
+    if total_known_words == 0: known_words_error = 0
+    else: known_words_error /= total_known_words
+    if total_unknown_words == 0: unknown_words_error=0
+    else: unknown_words_error /= total_unknown_words
     total_error /= total_known_words + total_unknown_words
     return known_words_error, unknown_words_error, total_error
 
+##
+
+MIN_FREQUENCY = 5
+PSEUDO_WORDS = ["firstword", "capitalinit", "lowercase", "hasdigits"]
+
+def pseudo_word(word: str, index: int) -> str:
+    """returns a fitting psuedo word for the given word
+
+    Args:
+        word (str)
+        index (int): the word index in the sentence
+
+    Returns:
+        str
+    """
+    if index == 0: return PSEUDO_WORDS[0]
+    for ch in word:
+        if ch.isdigit(): return PSEUDO_WORDS[3]
+    return PSEUDO_WORDS[1] if word[0].isupper() else PSEUDO_WORDS[2]
+    
+
+def count_words(sentences: list[list[tuple[str, str]]]) -> Counter:
+    """returns the word count for each word in the corpus
+
+    Args:
+        sentences (list[list[tuple[str, str]]])
+
+    Returns:
+        Counter
+    """
+    word_counter = Counter()
+    for sentence in sentences:
+        for word, tag in sentence:
+            word_counter[word.lower()] += 1
+    return word_counter
+
+def pseudo_corpus(sentences: list[list[tuple[str, str]]], word_counts: Counter) -> list[list[tuple[str, str]]]:
+    """replaces low-frequency words with pseudo words
+
+    Args:
+        sentences (list[list[tuple[str, str]]]): the original corpus
+        word_counts (Counter): the word counts in the corpus
+
+    Returns:
+        list[list[tuple[str, str]]]: the corpus after replacing the low-frequency words
+    """
+    new_corpus = []
+    for sentence in sentences:
+        new_sentence = []
+        for i in range(len(sentence)):
+            word, tag = sentence[i]
+            if word_counts[word.lower()] < MIN_FREQUENCY:
+                new_sentence.append((pseudo_word(word, i), tag))
+            else:
+                new_sentence.append((word.lower(), tag))
+        new_corpus.append(new_sentence)
+    return new_corpus
+
+def confusion_matrix():
+    pass      
+        
+##
 
 if __name__ == "__main__":
     MOST_COMMON_TAG = 'NN'
@@ -201,7 +261,18 @@ if __name__ == "__main__":
     ### d)
     # print(train_sentences[0])
     # print(compute_hmm_bigram_with_add_one_smoothing(train_sentences[:1]))
-    print("\nviterbi algorithm rates:")
-    q, e = compute_hmm_bigram_with_add_one_smoothing(train_sentences)
-    print(compute_viterbi_error_rates(q, e, test_sentences))
     
+    #print("\nviterbi algorithm rates:")
+    #q, e = compute_hmm_bigram_with_add_one_smoothing(train_sentences)
+    #print(compute_viterbi_error_rates(q, e, test_sentences))
+    
+    #e
+    word_counts = count_words(train_sentences)
+    new_corpus = pseudo_corpus(train_sentences, word_counts)
+    new_test = pseudo_corpus(test_sentences, word_counts)  
+    #ii:
+    q,e = compute_hmm_bigram(new_corpus)
+    print(compute_viterbi_error_rates(q, e, new_test))
+    #iii:
+    q,e = compute_hmm_bigram_with_add_one_smoothing(new_corpus)
+    print(compute_viterbi_error_rates(q, e, new_test))
